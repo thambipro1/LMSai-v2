@@ -31,6 +31,9 @@
                     <li class="">
                         <a rel="tooltip" data-placement="bottom" title="Click Here to Login" id="login" href="librarian"></i>&nbsp;Admin Login</a>
                     </li>
+                    <li class="">
+                        <a rel="tooltip" data-placement="bottom" title="Click Here to Login" id="login" href="librarian/index2.php"></i>&nbsp;Student Login</a>
+                    </li>
                 </ul>
             </div>
         </div>

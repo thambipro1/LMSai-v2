@@ -146,80 +146,116 @@
 </head>
 <body>
 
+<?php
+// Database connection parameters
+$servername = "localhost";
+$dbUsername = "root"; // Replace with your database username
+$dbPassword = ""; // Replace with your database password
+$database = "eb_lms";
+
+// Create a connection
+$db = new mysqli($servername, $dbUsername, $dbPassword, $database);
+
+// Check connection
+if ($db->connect_error) {
+    die("Connection failed: " . $db->connect_error);
+}
+
+// Handle form submission
+$errors = [];
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $student_no = $_POST['student_no'];
+    $password = $_POST['password'];
+    $cpassword = $_POST['cpassword'];
+    $image = $_FILES['image'];
+
+    // Error handling
+    if (empty($student_no)) {
+        $errors['student_no'] = "Student number is required.";
+    }
+
+    if ($password !== $cpassword) {
+        $errors['password'] = "Passwords do not match.";
+    }
+
+    if ($image['error'] != 0) {
+        $errors['image'] = "Please upload an image.";
+    }
+
+    if (empty($errors)) {
+        // Check for duplicate student_no
+        $stmt = $db->prepare("SELECT COUNT(*) FROM students WHERE student_no = ?");
+        $stmt->bind_param("s", $student_no);
+        $stmt->execute();
+        $stmt->bind_result($count);
+        $stmt->fetch();
+        $stmt->close();
+
+        if ($count > 0) {
+            $errors['duplicate'] = "User already exists with this Student No.";
+        } else {
+            // Image upload handling
+            $target_dir = "uploads/";
+            $image_name = basename($image["name"]);
+            $target_file = $target_dir . $image_name;
+
+            // Ensure the uploads directory exists
+            if (!is_dir($target_dir)) {
+                mkdir($target_dir, 0755, true);
+            }
+
+            move_uploaded_file($image["tmp_name"], $target_file);
+
+            // Insert into the database
+            $stmt = $db->prepare("INSERT INTO students (student_no, password, photo) VALUES (?, ?, ?)");
+            $stmt->bind_param("sss", $student_no, $password, $target_file);
+
+            if ($stmt->execute()) {
+                echo "<div class='confirmation-message'>Registration successful! Welcome to LMSai.</div>";
+            } else {
+                echo "<div class='error'>Registration failed: " . $stmt->error . "</div>";
+            }
+
+            $stmt->close();
+        }
+    }
+    $db->close();
+}
+?>
+
     <div class="form-container" id="registrationForm">
         <h2>Student Registration</h2>
+        <form method="POST" enctype="multipart/form-data">
+            <div class="form-group">
+                <label for="student_no">Student No:</label>
+                <input type="text" id="student_no" name="student_no" placeholder="Enter Student No" required>
+                <?php if (!empty($errors['student_no'])) echo "<span class='error'>" . $errors['student_no'] . "</span>"; ?>
+                <?php if (!empty($errors['duplicate'])) echo "<span class='error'>" . $errors['duplicate'] . "</span>"; ?>
+            </div>
 
-        <div class="form-group">
-            <label for="student_no">Student No:</label>
-            <input type="text" id="student_no" name="student_no" placeholder="Enter Student No" required>
-            <span id="studentNoError" class="error"></span>
-        </div>
+            <div class="form-group">
+                <label for="password">Password:</label>
+                <input type="password" id="password" name="password" placeholder="Enter Password" required>
+            </div>
 
-        <div class="form-group">
-            <label for="password">Password:</label>
-            <input type="password" id="password" name="password" placeholder="Enter Password" required>
-        </div>
+            <div class="form-group">
+                <label for="cpassword">Confirm Password:</label>
+                <input type="password" id="cpassword" name="cpassword" placeholder="Confirm Password" required>
+                <?php if (!empty($errors['password'])) echo "<span class='error'>" . $errors['password'] . "</span>"; ?>
+            </div>
 
-        <div class="form-group">
-            <label for="cpassword">Confirm Password:</label>
-            <input type="password" id="cpassword" name="cpassword" placeholder="Confirm Password" required>
-            <span id="passwordError" class="error"></span>
-        </div>
+            <div class="form-group file-upload-wrapper">
+                <label for="image">Upload Image</label>
+                <input type="file" id="image" name="image" required>
+                <span>Click to choose file</span>
+                <?php if (!empty($errors['image'])) echo "<span class='error'>" . $errors['image'] . "</span>"; ?>
+            </div>
 
-        <div class="form-group file-upload-wrapper">
-            <label for="image">Upload Image</label>
-            <input type="file" id="image" name="image" required>
-            <span>Click to choose file</span>
-            <span id="imageError" class="error"></span>
-        </div>
-
-        <div class="form-group">
-            <button type="button" class="btn" onclick="registerUser()">Confirm</button>
-        </div>
+            <div class="form-group">
+                <button type="submit" class="btn">Confirm</button>
+            </div>
+        </form>
     </div>
-
-    <div class="confirmation-message" id="confirmationMessage">
-        Registration successful! Welcome to LMSai.
-    </div>
-
-    <script>
-        function registerUser() {
-            // Reset error messages
-            document.getElementById("studentNoError").textContent = "";
-            document.getElementById("passwordError").textContent = "";
-            document.getElementById("imageError").textContent = "";
-
-            // Get form values
-            const studentNo = document.getElementById("student_no").value;
-            const password = document.getElementById("password").value;
-            const confirmPassword = document.getElementById("cpassword").value;
-            const image = document.getElementById("image").files[0];
-
-            // Error handling
-            let hasError = false;
-
-            if (studentNo === "") {
-                document.getElementById("studentNoError").textContent = "Student number is required.";
-                hasError = true;
-            }
-
-            if (password !== confirmPassword) {
-                document.getElementById("passwordError").textContent = "Passwords do not match.";
-                hasError = true;
-            }
-
-            if (!image) {
-                document.getElementById("imageError").textContent = "Please upload an image.";
-                hasError = true;
-            }
-
-            if (!hasError) {
-                // Hide form and show confirmation
-                document.getElementById("registrationForm").style.display = 'none';
-                document.getElementById("confirmationMessage").style.display = 'block';
-            }
-        }
-    </script>
 
 </body>
 </html>

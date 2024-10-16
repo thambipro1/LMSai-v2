@@ -1,6 +1,10 @@
+<?php include('student_navbar.php');?>
 <?php
-session_start();
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 ob_start();
+;
 
 $servername = "localhost";
 $dbUsername = "root";
